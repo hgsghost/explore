@@ -179,7 +179,7 @@ services:
 
 可见zk1-3,ottermaster均连接到网络
 
-### 下载   otter manager
+## 下载   otter manager
 
 我们使用一个centos7 来构建otter manager容器
 
@@ -197,7 +197,7 @@ docker run -it -d -p 8080:8080 --name ottermanager centos:7
 
 创建ottermanagert的安装路径`mkdir ottermanager`
 
-进入ottermanagert目录`cd ottermanagert`
+进入ottermanagert目录`cd ottermanager`
 
 下载相应的版本`wget https://github.com/alibaba/otter/releases/download/otter-4.2.18/manager.deployer-4.2.18.tar.gz` 我用的4.2.18
 
@@ -254,11 +254,19 @@ otter.manager.monitor.email.password =
 otter.manager.monitor.email.stmp.port = 465
 ```
 
-去manager的bin目录中启动otter manager
+### 将manager加入otter-net网络(在运行docker的主机上执行)
+
+`docker network connect otter-net ottermanager`
 
 ### 还需要构建jdk环境(读者自行百度解决)
 
 `java -version` 查看java版本无误后启动
+
+### 去manager的bin目录中启动otter manager
+
+注意:执行启动命令后发现找不到java命令不知道为什么,我的解决方案是修改startup.sh文件为
+
+> 在## set java path下面添加`JAVA="/jdk/jdk1.8.0_301/bin/java"`
 
 进入bin目录中` ./startup.sh`
 
@@ -270,4 +278,93 @@ otter.manager.monitor.email.stmp.port = 465
 ````
 
 此时访问本地的8080端口可以看到otter控制台
+
+在控制台登录账户(默认账户密码都是admin)
+
+机器管理中添加zookeeper集群
+
+集群的ip地址可以通过进入ottermanager容器中ping zk1-3来获取
+
+我的集群地址为   172.18.0.4:2181, 172.18.0.2:2181, 172.18.0.3:2181
+
+## 下载otter-node
+
+我们使用一个centos7 来构建otter node容器
+
+`docker pull centos:7`
+
+创建容器
+
+docker run -it -d  --name otternode1 centos:7 
+
+进入容器`docker exec -it otternode1 /bin/bash`
+
+更新yum源 `yum update`
+
+安装wget命令`yum install wget`
+
+创建ottermanagert的安装路径`mkdir otternode`
+
+进入ottermanagert目录`cd otternode`
+
+下载相应的版本`wget https://github.com/alibaba/otter/releases/download/otter-4.2.18/node.deployer-4.2.18.tar.gz` 我用的4.2.18
+
+创建manager目录`mkdir node`
+
+解压`tar -zxvf node.deployer-4.2.18.tar.gz -C node`
+
+nid配置 (将环境准备中添加node节点后节点列表的序号，保存到conf目录下的nid文件，比如我添加的机器对应序号为1)
+
+`echo 1 > conf/nid`
+
+进入conf目录中修改otter.properties文件为
+
+```
+# otter node root dir
+otter.nodeHome = ${user.dir}/../
+
+## otter node dir
+otter.htdocs.dir = ${otter.nodeHome}/htdocs
+otter.download.dir = ${otter.nodeHome}/download
+otter.extend.dir= ${otter.nodeHome}/extend
+
+## default zookeeper sesstion timeout = 60s
+otter.zookeeper.sessionTimeout = 60000
+
+## otter communication payload size (default = 8388608)
+otter.communication.payload = 8388608
+
+## otter communication pool size
+otter.communication.pool.size = 10
+
+## otter arbitrate & node connect manager config
+otter.manager.address = ottermanager:1099
+```
+
+### 将node加入网络(在docker运行的主机中运行)
+
+`docker network connect otter-net otternode1`
+
+### 还需要构建jdk环境(读者自行百度解决)
+
+`java -version` 查看java版本无误后启动
+
+### 去manager的bin目录中启动otter node
+
+注意:执行启动命令后发现找不到java命令不知道为什么,我的解决方案是修改startup.sh文件为
+
+> 在## set java path下面添加`JAVA="/jdk/jdk1.8.0_301/bin/java"`
+
+进入bin目录中` ./startup.sh`
+
+在/logs目录中 node.log文件中 如果看到以下输出说明启动成功
+
+```
+Java HotSpot(TM) 64-Bit Server VM warning: ignoring option MaxPermSize=128m; support was removed in 8.0
+2021-09-09 09:55:12.779 [main] INFO  com.alibaba.otter.node.deployer.OtterLauncher - INFO ## the otter server is running now ......
+```
+
+此时在manager的管理界面可以看到node已经启动
+
+![node启动](https://camo.githubusercontent.com/c9597b9237d0db6161360075b7ff8c084a92882d8b9a63499cf9e381c3c23eb5/687474703a2f2f646c322e69746579652e636f6d2f75706c6f61642f6174746163686d656e742f303038382f313930342f66616531343964362d383739302d336133622d616635382d3239383163383738346334652e706e67)
 

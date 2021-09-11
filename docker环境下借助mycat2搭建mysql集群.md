@@ -394,3 +394,5 @@ total 2588
 > 此时 mycat2已经配置完成
 
 使用navicat链接本地8066端口可以跟访问普通mysql一样访问mycat
+
+完

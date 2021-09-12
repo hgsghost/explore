@@ -368,3 +368,11 @@ Java HotSpot(TM) 64-Bit Server VM warning: ignoring option MaxPermSize=128m; sup
 
 ![node启动](https://camo.githubusercontent.com/c9597b9237d0db6161360075b7ff8c084a92882d8b9a63499cf9e381c3c23eb5/687474703a2f2f646c322e69746579652e636f6d2f75706c6f61642f6174746163686d656e742f303038382f313930342f66616531343964362d383739302d336133622d616635382d3239383163383738346334652e706e67)
 
+
+
+### 创建mysql 从库
+
+启动mysql slave 容器 `docker run -it --name otterslave -e MYSQL_ROOT_PASSWORD=123 -d    mysql:5.6 --log-bin=mysql-bin --server-id=2 --relay-log=relay-log  --log_slave_update=1 --binlog_format=ROW`
+
+加入网络`docker network connect otter-net otterslave`
+

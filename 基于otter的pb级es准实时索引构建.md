@@ -14,7 +14,7 @@
 
 启动容器
 
-`docker run -it --name ottermaster -e MYSQL_ROOT_PASSWORD=123 -d mysql:5.6 --log-bin=mysql-bin --server-id=1 --binlog_format=ROW`
+`docker run -it --name ottermaster -e MYSQL_ROOT_PASSWORD=123 -d mysql:5.6 --log-bin=mysql-bin --server-id=1 --binlog_format=ROW --character-set-server=utf8 --collation-server=utf8_general_ci`
 
 在mysql容器中的mysql客户端执行以下链接的sql文件
 
@@ -285,7 +285,7 @@ otter.manager.monitor.email.stmp.port = 465
 
 集群的ip地址可以通过进入ottermanager容器中ping zk1-3来获取
 
-我的集群地址为   172.18.0.4:2181, 172.18.0.2:2181, 172.18.0.3:2181
+我的集群地址为   172.18.0.4:2181;172.18.0.2:2181;172.18.0.3:2181;
 
 ## 下载otter-node
 
@@ -372,7 +372,9 @@ Java HotSpot(TM) 64-Bit Server VM warning: ignoring option MaxPermSize=128m; sup
 
 ### 创建mysql 从库
 
-启动mysql slave 容器 `docker run -it --name otterslave -e MYSQL_ROOT_PASSWORD=123 -d    mysql:5.6 --log-bin=mysql-bin --server-id=2 --relay-log=relay-log  --log_slave_update=1 --binlog_format=ROW`
+启动mysql slave 容器 `docker run -it --name otterslave -e MYSQL_ROOT_PASSWORD=123 -d    mysql:5.6 --log-bin=mysql-bin --server-id=2 --relay-log=relay-log  --log_slave_update=1 --binlog_format=ROW  --character-set-server=utf8 --collation-server=utf8_general_ci`
 
 加入网络`docker network connect otter-net otterslave`
+
+将ottermaster和otterslave都加入到配置管理下的数据源配置(数据库编码选择utf8)
 

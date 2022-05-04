@@ -1,4 +1,4 @@
-# 关于jenkins学习记录
+# 关于jenkins学习记录(初级)
 
 ## 1. 理论基础
 
@@ -49,7 +49,7 @@
 
 3. 一个持续集成服务器(jenkins)
 
-## 2  jenkins
+## 2.  jenkins
 
 持续集成服务器
 
@@ -393,7 +393,262 @@ pipeline以代码的形式实现,使团队可以编辑,审查,迭代其流程,�
 
     ![](resource/jenkinsPipelineSteps.png)
 
+##### 2.2.3.3  通过Jenkinsfile完成部署
 
+Jenkinsfile其实就是将写在jenkins配置中的pipeline脚本放到项目根目录中的Jenkinsfile文件下,实现在项目通过代码中控制发布的目的
+
+1. pipeline项目中配置的pipeline脚本复制到项目的Jenkinsfile文件中,并提交git
+
+2. 在配置中选择**pipeline script from SCM**
+
+3. scm选择git 并配置地址
+
+   ![](resource/jenkinsPipelineJenkinsfile.png)
+
+4. 再次构建,结果和上次一致
+
+#### 2.2.4 构建触发器
+
+##### 2.2.4.1 jenkins内置构建触发器
+
+1. 其他工程构建后触发
+
+   顾名思义,将需要关注的工程名称输入文本框,就可以自动在目标工程构建之后触发本工程的构建
+
+   ![](resource/jenkinsTriggerBuildAfterProject.png)
+
+2. 定时构建
+
+   输入一个类cron表达式就可以定时构建
+
+3. 轮训scm
+
+   这个也是输入一个类cron表达式,jenkins会根据表达式定时扫描项目的git 地址,发现新的提交就会自动构建,没有提交不会构建
+
+   **这个方案需要频繁请求git仓库,性能不佳,后面会有更好的解决方案**
+
+4. 触发远程构建
+
+   设定一个token之后就可以通过固定的链接+token的形式通过http请求远程触发构建
+
+##### 2.2.4.2 高级触发器
+
+1. web hook trigger
+
+   这个触发器可以通过git提交事件时,github/gitlib/等类似工具的主动调用来触发工程构建
+
+   1. 安装插件 `Generic Webhook Trigger`
+
+   2. 在项目的配置中构建触发器中设置插件
+
+      ![](resource/jenkinsTriggerWebhook.png)
+
+   3. 在github中设置webhook
+
+      ![](resource/jenkinsTriggerGithubWebhook.png)
+
+   4. 提交代码后发现成功触发构建
+
+##### 2.2.4.3 参数化构建
+
+1. 工程的配置中选择参数化构建![](resource/jenkinsPipelineParamBuild.png)
+
+2. 在pipeline脚本中通过`${参数名}`引入参数
+
+   ![](resource/jenkinsPipelineParamUse.png)
+
+3. 构建成功后确认可以根据参数发布相应分支
+
+## 3. sonarqube
+
+一个**代码审查平台**
+
+### 3.1 环境支持
+
+需要一个postgresql数据库(现在的版本已经不支持mysql数据库了)
+
+`docker pull postgres`
+
+`docker run --name postgres -d -p 5432:5432 -e POSTGRES_USER=sonar -e POSTGRES_PASSWORD=sonar -e POSTGRES_DB=sonar --privileged=true postgres`
+
+此时可以通过本机的5432端口访问postgres
+
+用户名 sonar 密码 sonar
+
+### 3.2 安装sonarqube
+
+通过docker 安装sonarqube
+
+1. 拉去镜像
+
+   `docker pull sonarqube:9.3-community`
+
+2. 启动容器
+
+   `docker run -d --name sonar -p 9090:9000 -e ALLOW_EMPTY_PASSWORD=yes --privileged=true  sonarqube:9.3-community`
+
+   注:如果有以下报错
+
+   ```
+   vm.max_map_count [65530] is too low, increase to at least [262144]
+   ```
+
+   解决方式:**宿主机器上执行**
+
+   ```
+   wsl -d docker-desktop
+   sysctl -w vm.max_map_count=262144
+   ```
+
+3. 进入容器
+
+   `docker exec -it sonar /bin/bash`
+
+4. 更新配置
+
+   `vi conf/sonar.properties`
+
+   ```
+   sonar.jdbc.username=sonar
+   sonar.jdbc.password=sonar
+   sonar.jdbc.url=jdbc:postgresql://10.243.149.2:5432/sonar
+   ```
+
+5. 重启容器
+
+   `docker container restart sonar`
+
+6. 访问本地9090端口可以看到sonar成功启动
+
+   默认用户名密码都是 admin
+
+   ![](resource\sonarqubeStart.png)
+
+### 3.3 jenkins 集成 sonarqube
+
+1. jenkins 安装 `SonarQube Scanner` 插件
+
+2. 通过全局工具配置中自动将 sonarqube scanner安装到jenkins的所在服务器
+
+3. 在sonarqube的页面中点击自己头像选择->myaccount->security->generate tokens 生成token 
+
+   ![](resource/sonarqubeToken.png)
+
+4. 在jenkins中添加凭证
+
+   ![](resource/jenkinsSonarqubeToken.png)
+
+5. 在系统管理->系统配置中添加sonarqube的服务器地址
+
+   ![](resource/jenkinsSonarqubeServerAddress.png)
+
+### 3.4 freestyle/maven项目使用sonarqube
+
+安装插件之后,项目的配置中
+
+post steps中可以看到 execute sonarqube scanner选项
+
+![](resource/jenkinsMavenSonarqube.png)
+
+在项目下创建`sonar-project.properties `文件
+
+配置如下
+
+```
+sonar.projectKey = jenkins_test_key
+sonar.projectName = jenkins_test_name
+sonar.projectVersion = 1.0
+# 待扫描路径
+sonar.sources = .
+sonar.exclusions = **/test/**,**/target/**
+
+sonar.java.source = 1.8
+sonar.java.target = 1.8
+sonar.sourceEncoding = UTF-8
+sonar.java.binaries = target/classes
+```
+
+工程配置如下
+
+![](resource/jenkinsSonarqubePostSteps.png)
+
+点击立刻构建 发现执行成功
+
+此时去sonarqube中可以看到刚才构建项目的分析结果
+
+![](resource/sonarqubeAnalysisResult.png)
+
+### 3.5 pipeline项目使用sonarqube
+
+这个写法官网不太好找,百度才能找到
+
+可以在maven打包之前添加代码审核阶段
+
+代码如下
+
+```groovy
+pipeline {
+    agent any
+
+    stages {
+        stage('git pull') {
+            steps {
+               checkout([$class: 'GitSCM', branches: [[name: '*/${branch}']], extensions: [], userRemoteConfigs: [[credentialsId: 'github', url: 'git@github.com:xxxxx/xxxx.git']]])
+            }
+        }
+        stage('check code'){
+            steps {
+                script{
+                    //引入sonarqube scanner
+                    //这是全局工具设置中 新增sonarqube scanner的那个名字
+                    scannerHome= tool 'sonarqube scanner'
+                }
+                //这是系统设置中 SonarQube installations的名字
+                withSonarQubeEnv('sonarqube-server') {
+                    sh "${scannerHome}/bin/sonar-scanner"
+                }
+            }
+        }
+        stage('mvn package') {
+            steps {
+               sh 'mvn -Dmaven.test.failure.ignore=true clean package'
+            }
+        }
+        stage('ssh publish') {
+            steps {
+               sshPublisher(publishers: [sshPublisherDesc(configName: 'company 252', transfers: [sshTransfer(cleanRemote: false, excludes: '', execCommand: 'bash /jenkinstest/restart.sh', execTimeout: 120000, flatten: false, makeEmptyDirs: false, noDefaultExcludes: false, patternSeparator: '[, ]+', remoteDirectory: '', remoteDirectorySDF: false, removePrefix: 'target', sourceFiles: 'target/demo-0.0.1-SNAPSHOT.jar')], usePromotionTimestamp: false, useWorkspaceInPromotion: false, verbose: false)])
+            }
+        }
+      
+    }
+}
+```
+
+构建成功并且可以在sonarqube 查看到分析结果
+
+## 4 实战部署
+
+实战中,我们直接部署jenkins镜像,不再使用centos镜像创建
+
+1. linux服务器安装docker [官方地址](https://docs.docker.com/engine/install/centos/)
+
+2. 在宿主服务器上创建如下目录
+
+   `/software/jenkins/jenkins_home`
+
+3. 启动容器
+
+   `docker run -itd --name jenkins -p 8888:8080 -p 50000:50000 --restart always -v /software/jenkins/jenkins_home:/var/jenkins_home -u some_other_user jenkins/jenkins:lts-jdk11`
+
+4. 暂时配置的管理员账户和密码都是admin
+
+5. 安装上述所有的插件
+
+6. 创建测试工程app-training-maven 和app-training-pipeline
+
+7. 根据上述教程安装sonarqube  (用户名为 admin 密码为 123)
+
+8. 测试通过
 
 
 

@@ -638,7 +638,7 @@ pipeline {
 
 3. 启动容器
 
-   `docker run -itd --name jenkins -p 8888:8080 -p 50000:50000 --restart always -v /software/jenkins/jenkins_home:/var/jenkins_home -u some_other_user jenkins/jenkins:lts-jdk11`
+   `docker run -itd --name jenkins -p 8888:8080 -p 50000:50000 --restart always -v /software/jenkins/jenkins_home:/var/jenkins_home -u root jenkins/jenkins:lts-jdk11`
 
 4. 暂时配置的管理员账户和密码都是admin
 
